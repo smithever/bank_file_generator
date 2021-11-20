@@ -64,7 +64,8 @@ class ImportsUI(qtw.QWidget):
                 self.current_import_file_transactions = file_import.load_new(file_path, self.entity_id)
             except Exception as e:
                 qtw.QMessageBox.about(self, "Error!", str(e))
-            self.update_import_tables(True)
+            else:
+                self.update_import_tables(True)
         pass
 
     def delete_file(self):

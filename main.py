@@ -21,16 +21,28 @@ class MainAppUI(qtw.QWidget):
         self.ui = Ui_Main_App()
         self.ui.setupUi(self)
         self.entity_id = self.parent().entity_id
-        edit_w = EditEntity()
-        edit_w.edit(self.parent().entities, self.parent().entity_id)
-        self.ui.layout_edit_entity.addWidget(edit_w)
-        imports_w = ImportsUI(self)
-        self.ui.layout_imports.addWidget(imports_w)
-        suppliers_w = SuppliersUI(self)
-        self.ui.layout_suppliers.addWidget(suppliers_w)
-        exports_w = ExportsUI(self)
-        self.ui.layouts_exports.addWidget(exports_w)
+        self.edit_w = EditEntity()
+        self.entities = db.get_entities()
+        self.edit_w.edit(self.entities, self.parent().entity_id)
+        self.ui.layout_edit_entity.addWidget(self.edit_w)
+        self.imports_w = ImportsUI(self)
+        self.ui.layout_imports.addWidget(self.imports_w)
+        self.suppliers_w = SuppliersUI(self)
+        self.ui.layout_suppliers.addWidget(self.suppliers_w)
+        self.exports_w = ExportsUI(self)
+        self.ui.layouts_exports.addWidget(self.exports_w)
         self.ui.tab_Widget.setCurrentIndex(0)
+        self.ui.tab_Widget.tabBarClicked.connect(self.handle_tabbar_clicked)
+
+    def handle_tabbar_clicked(self, index):
+        print(index)
+        if index == 1:
+            self.imports_w.update_import_tables(True)
+        if index == 2:
+            self.suppliers_w.update_suppliers_table()
+            self.suppliers_w.update_transaction_table()
+        if index == 3:
+            self.exports_w.update_tables()
 
 
 class MainApp(qtw.QMainWindow):

@@ -55,7 +55,7 @@ class EditEntity(qtw.QWidget):
                 new = entities.append(new, ignore_index=True)
                 new.reset_index(drop=False)
                 db.save_entities(new)
-                callback(new)
+                callback(new[db.entity_headings])
                 self.close()
                 return
             if is_edit:
@@ -74,23 +74,28 @@ class EditEntity(qtw.QWidget):
 class SelectEntity(qtw.QWidget):
     def __init__(self, parent):
         super(SelectEntity, self).__init__(parent)
-        self.entities: pd.DataFrame = db.get_entities()
-        print(self.entities.count())
+        self.entities = pd.DataFrame
         self.ui = Ui_SelectEntityForm()
         self.ui.setupUi(self)
         self.ui.btn_load_entity.clicked.connect(self.load_clicked)
         self.ui.btn_add_entity.clicked.connect(self.edit_entity_clicked)
-        i = len(self.entities)
-        while 0 < i <= len(self.entities):
-            self.ui.list_entities.addItem(str(self.entities.iloc[i-1, 2]))
-            i = i - 1
         self.selected_entity = ""
+        self.update_list()
+
+    def update_list(self):
+        self.ui.list_entities.clear()
+        self.entities = db.get_entities()
+        if len(self.entities) > 0:
+            i = len(self.entities)
+            while 0 < i <= len(self.entities):
+                self.ui.list_entities.addItem(str(self.entities.iloc[i - 1, 1]))
+                i = i - 1
 
     def load_clicked(self):
         m = EditEntity()
         sel_index = self.ui.list_entities.currentIndex().row()
         if sel_index >= 0:
-            self.selected_entity = self.entities.iloc[sel_index, 1]
+            self.selected_entity = self.entities.at[sel_index, "sys_id"]
             self.parent().load(self.selected_entity)
             print(f"load clicked {self.selected_entity}")
 
@@ -100,12 +105,7 @@ class SelectEntity(qtw.QWidget):
 
     def callback(self, df: pd.DataFrame):
         print("Callback init")
-        self.ui.list_entities.clear()
-        self.entities = df
-        i = len(self.entities)
-        while 0 < i <= len(self.entities):
-            self.ui.list_entities.addItem(str(self.entities.iloc[i - 1, 2]))
-            i = i - 1
+        self.update_list()
 
     def hide_callback(self):
         self.hide()

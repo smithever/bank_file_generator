@@ -63,7 +63,8 @@ class DatabaseService:
     def get_entities(self) -> pd.DataFrame:
         ret = pd.DataFrame(columns=self.entity_headings).set_index("sys_id")
         try:
-            return pd.read_sql_query("SELECT * FROM entities", self.conn)
+            ret = pd.read_sql_query("SELECT * FROM entities", self.conn)
+            return ret[self.entity_headings]
         except pandas.io.sql.DatabaseError:
             return ret
 
@@ -162,6 +163,7 @@ class DatabaseService:
             self.conn.commit()
 
     def get_suppliers_summary(self, entity_id) -> pd.DataFrame:
+        ret = pd.DataFrame(columns=self.supplier_summary_headings)
         try:
             suppliers = pd.read_sql_query(
                 f"SELECT * FROM [suppliers]",
@@ -184,17 +186,20 @@ class DatabaseService:
                 ret = suppliers.append(missing)
                 return ret[self.supplier_summary_headings].sort_values(by="to_account_number", ascending=True)
         except pandas.io.sql.DatabaseError:
-            new = pd.read_sql_query(
-                f"SELECT DISTINCT(supplier_code), supplier_name FROM [import_transactions_{entity_id}]",
-                self.conn
-            )
-            if len(new) > 0:
-                new["sys_id"] = [str(uuid.uuid4()) for _ in range(len(new.index))]
-                new["to_account_number"] = ""
-                new["to_sub_account_number"] = ""
-                new["to_branch_code"] = ""
-                new["to_account_holder_name"] = ""
-            return new[self.supplier_summary_headings]
+            try:
+                new = pd.read_sql_query(
+                    f"SELECT DISTINCT(supplier_code), supplier_name FROM [import_transactions_{entity_id}]",
+                    self.conn
+                )
+                if len(new) > 0:
+                    new["sys_id"] = [str(uuid.uuid4()) for _ in range(len(new.index))]
+                    new["to_account_number"] = ""
+                    new["to_sub_account_number"] = ""
+                    new["to_branch_code"] = ""
+                    new["to_account_holder_name"] = ""
+                return new[self.supplier_summary_headings]
+            except pandas.io.sql.DatabaseError:
+                return ret
 
     def get_exported_file_summary(self, entity_id) -> pd.DataFrame:
         ret = pd.DataFrame(columns=self.export_file_headings)
@@ -240,6 +245,7 @@ class DatabaseService:
                 f"WHERE it.sys_id in {str(tuple(tran_ids)).replace(',)', ')')} ",
                 self.conn
             )
+            self.update_transactions_status(tran_ids, "EXPORTING", entity_id)
             return ret
         except pandas.io.sql.DatabaseError:
             return ret
@@ -247,13 +253,15 @@ class DatabaseService:
     def update_transactions_exported(self, entity_id, tran_ids, filename) -> pd.DataFrame:
         if tran_ids:
             try:
-                self.conn.execute(
-                    f"UPDATE [import_transactions_{entity_id}] "
-                    "SET sys_prev_status = sys_status, "
-                    f"sys_export_file_name = {filename}, "
-                    f"sys_export_date = {datetime.datetime.now()} "
-                    f"WHERE it.sys_id in {str(tuple(tran_ids)).replace(',)', ')')} "
-                )
+                sql = f"""UPDATE [import_transactions_{entity_id}]
+                SET sys_export_file_name = '{filename}',
+                sys_export_date = '{datetime.datetime.now()}'
+                WHERE sys_id in {str(tuple(tran_ids)).replace(',)', ')')}"""
+                self.conn.execute(sql)
                 self.conn.commit()
-            except sqlite3.DatabaseError:
-                raise Exception()
+            except sqlite3.DatabaseError as er:
+                raise RuntimeError(er)
+            else:
+                self.update_transactions_status(tran_ids, "EXPORTED", entity_id)
+
+

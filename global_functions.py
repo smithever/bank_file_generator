@@ -7,16 +7,17 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 def pandas_to_table_widget(df: pd.DataFrame, table: qtw.QTableWidget):
     table.clear()
     n_rows, n_columns = df.shape
-    table.setColumnCount(n_columns)
-    table.setRowCount(n_rows)
-    table.setHorizontalHeaderLabels(df.columns)
-    # table.verticalHeader().setSectionResizeMode(qtw.QHeaderView.Stretch)
-    # data insertion
-    for i in range(table.rowCount()):
-        for j in range(table.columnCount()):
-            table.setItem(i, j, qtw.QTableWidgetItem(str(df.iloc[i, j])))
-    table.horizontalHeader().setSectionResizeMode(qtw.QHeaderView.ResizeToContents)
-    table.setSelectionBehavior(qtw.QAbstractItemView.SelectRows)
+    if n_columns > 0:
+        table.setColumnCount(n_columns)
+        table.setRowCount(n_rows)
+        table.setHorizontalHeaderLabels(df.columns)
+        # table.verticalHeader().setSectionResizeMode(qtw.QHeaderView.Stretch)
+        # data insertion
+        for i in range(table.rowCount()):
+            for j in range(table.columnCount()):
+                table.setItem(i, j, qtw.QTableWidgetItem(str(df.iloc[i, j])))
+        table.horizontalHeader().setSectionResizeMode(qtw.QHeaderView.ResizeToContents)
+        table.setSelectionBehavior(qtw.QAbstractItemView.SelectRows)
 
 
 def unique(list1):

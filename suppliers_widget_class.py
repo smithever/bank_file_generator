@@ -34,8 +34,8 @@ class SuppliersUI(qtw.QWidget):
         self.entity_id = self.parent().entity_id
         self.ui = Ui_Suppliers()
         self.ui.setupUi(self)
-        self.suppliers = db.get_suppliers_summary(self.entity_id)
-        common.pandas_to_table_widget(self.suppliers, self.ui.tbl_suppliers)
+        self.suppliers = pd.DataFrame()
+        self.update_suppliers_table()
         delegate = ReadOnlyDelegate(self.ui.tbl_suppliers)
         self.ui.tbl_suppliers.setItemDelegateForColumn(0, delegate)
         self.ui.tbl_suppliers.setItemDelegateForColumn(1, delegate)
@@ -50,6 +50,11 @@ class SuppliersUI(qtw.QWidget):
         status_menu.triggered.connect(lambda x: self.update_selected_tran_status(x.text()))
         self.ui.btn_status_change.setMenu(status_menu)
         self.add_menu(db.statuses, status_menu)
+
+    def update_suppliers_table(self):
+        self.suppliers = db.get_suppliers_summary(self.entity_id)
+        if len(self.suppliers) > 0:
+            common.pandas_to_table_widget(self.suppliers, self.ui.tbl_suppliers)
 
     def update_suppliers(self, row, column):
         text = self.ui.tbl_suppliers.item(row, column).text()
