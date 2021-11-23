@@ -1,3 +1,5 @@
+from functools import partial
+
 from database import DatabaseService
 from PyQt5 import QtWidgets as qtw
 import os
@@ -54,7 +56,26 @@ class SuppliersUI(qtw.QWidget):
     def update_suppliers_table(self):
         self.suppliers = db.get_suppliers_summary(self.entity_id)
         if len(self.suppliers) > 0:
+            combo_box_options = ["0.Public Recipient", "1.Current Account", "2.Savings Account", "3.Transmission Account", "4.Bond Account", "5.Subscription Share Account"]
             common.pandas_to_table_widget(self.suppliers, self.ui.tbl_suppliers)
+            i = self.ui.tbl_suppliers.rowCount()
+            while i > 0:
+                combo = qtw.QComboBox()
+                combo.currentTextChanged.connect(partial(self.update_to_account, i - 1))
+                for t in combo_box_options:
+                    combo.addItem(t)
+                combo.setCurrentText(self.suppliers.at[i - 1, "to_account_type"])
+                self.ui.tbl_suppliers.setCellWidget(i - 1, 6, combo)
+                i = i-1
+
+    def update_to_account(self, row):
+        widget = self.ui.tbl_suppliers.cellWidget(row, 6)
+        if isinstance(widget, qtw.QComboBox):
+            text = widget.currentText()
+            print(text)
+            index = self.suppliers.columns.get_loc("to_account_type")
+            self.suppliers.iloc[row, index] = text
+            db.save_suppliers_summary(self.suppliers, self.entity_id)
 
     def update_suppliers(self, row, column):
         text = self.ui.tbl_suppliers.item(row, column).text()

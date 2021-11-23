@@ -1,6 +1,8 @@
 import sys
 from database import DatabaseService
 from PyQt5 import QtWidgets as qtw
+from PyQt5 import QtCore as qtc
+from PyQt5 import QtGui
 from main_app import Ui_Main_App
 import os
 from import_service import ImportFile
@@ -33,9 +35,11 @@ class MainAppUI(qtw.QWidget):
         self.ui.layouts_exports.addWidget(self.exports_w)
         self.ui.tab_Widget.setCurrentIndex(0)
         self.ui.tab_Widget.tabBarClicked.connect(self.handle_tabbar_clicked)
+        self.loading = Loading()
 
     def handle_tabbar_clicked(self, index):
         print(index)
+        self.loading.start()
         if index == 1:
             self.imports_w.update_import_tables(True)
         if index == 2:
@@ -43,6 +47,7 @@ class MainAppUI(qtw.QWidget):
             self.suppliers_w.update_transaction_table()
         if index == 3:
             self.exports_w.update_tables()
+        self.loading.stop()
 
 
 class MainApp(qtw.QMainWindow):
@@ -67,14 +72,30 @@ class MainApp(qtw.QMainWindow):
         qtw.QMessageBox.about(self, message)
 
 
+class Loading(qtw.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("Loading")
+        self.setFixedSize(250, 250)
+        self.setWindowFlags(qtc.Qt.WindowStaysOnTopHint | qtc.Qt.CustomizeWindowHint)
+        # Create Label
+        self.label = qtw.QLabel(self)
+        self.movie = QtGui.QMovie("loading.gif")  # Create a QMovie from our gif
+        self.label.setMovie(self.movie)
+
+    def start(self):
+        self.movie.start()
+        self.show()
+
+    def stop(self):
+        self.movie.stop()
+        self.close()
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     app = qtw.QApplication(sys.argv)
     widget = MainApp()
     sys.exit(app.exec_())
-
-
-
 
 
 # TODO: https://businessbanking.nedsecure.co.za/TrainingPages/steps/Import%20batch%20paym%20CSV%20format/Import%20batch%20paym%20CSV%20format.htm#

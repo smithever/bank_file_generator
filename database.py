@@ -39,6 +39,7 @@ class DatabaseService:
             "bank_name",
             "account_number",
             "account_description",
+            "branch_code"
         ]
         self.supplier_summary_headings = [
             "supplier_code",
@@ -47,6 +48,7 @@ class DatabaseService:
             "to_sub_account_number",
             "to_branch_code",
             "to_account_holder_name",
+            "to_account_type",
             "sys_id"
         ]
         self.export_file_headings = [
@@ -133,7 +135,6 @@ class DatabaseService:
             return ret
 
     def update_transactions_status(self, transactions: list, status: str, entity_id):
-        print(str(tuple(transactions)).replace(",)", ")"))
         if transactions:
             query = self.conn.execute(
                 f"UPDATE [import_transactions_{entity_id}] SET sys_prev_status = sys_status, sys_status = '{status}' "
@@ -170,7 +171,6 @@ class DatabaseService:
                 self.conn
             )
             if len(suppliers) > 0:
-                print(suppliers['supplier_code'].tolist())
                 missing = pd.read_sql_query(
                     f"SELECT DISTINCT(supplier_code), supplier_name FROM [import_transactions_{entity_id}] "
                     f"WHERE supplier_code not in {str(tuple(suppliers['supplier_code'].tolist())).replace(',)', ')')}",
@@ -183,6 +183,7 @@ class DatabaseService:
                         missing["to_sub_account_number"] = ""
                         missing["to_branch_code"] = ""
                         missing["to_account_holder_name"] = ""
+                        missing["to_account_type"] = "1.Current Account"
                 ret = suppliers.append(missing)
                 return ret[self.supplier_summary_headings].sort_values(by="to_account_number", ascending=True)
         except pandas.io.sql.DatabaseError:
@@ -197,6 +198,7 @@ class DatabaseService:
                     new["to_sub_account_number"] = ""
                     new["to_branch_code"] = ""
                     new["to_account_holder_name"] = ""
+                    new["to_account_type"] = "1.Current Account"
                 return new[self.supplier_summary_headings]
             except pandas.io.sql.DatabaseError:
                 return ret
@@ -227,24 +229,22 @@ class DatabaseService:
     def get_export_transaction_nedbank(self, entity_id, tran_ids) -> pd.DataFrame:
         ret = pd.DataFrame(columns=self.imported_file_summary_headings)
         try:
-            ret = pd.read_sql_query(
-                f"SELECT "
-                f"(SELECT account_number FROM entities WHERE sys_id = '{entity_id}') AS 'from_account_number', "
-                f"(SELECT account_description FROM entities WHERE sys_id = '{entity_id}') AS "
-                f"'from_account_description', "
-                f"it.supplier_code, "
-                f"s.to_account_number, "
-                f"s.to_sub_account_number, "
-                f"s.to_branch_code, "
-                f"it.supplier_name, "
-                f"REPLACE(it.description, 'Supplier Invoice  - ', '') AS 'to_statement_description', "
-                f"it.amount "
-                f"FROM [import_transactions_{entity_id}] it "
-                f"INNER JOIN suppliers s "
-                f"ON s.supplier_code = it.supplier_code "
-                f"WHERE it.sys_id in {str(tuple(tran_ids)).replace(',)', ')')} ",
-                self.conn
-            )
+            sql = f"""SELECT
+            (SELECT account_number FROM entities WHERE sys_id = '{entity_id}') AS 'from_account_number',
+            (SELECT account_description FROM entities WHERE sys_id = '{entity_id}') AS
+            'from_account_description',
+            it.supplier_code AS 'own_statement_description',
+            s.to_account_number,
+            s.to_sub_account_number,
+            s.to_branch_code,
+            it.supplier_name,
+            REPLACE(it.description, 'Supplier Invoice  - ', '') AS 'to_statement_description',
+            it.amount
+            FROM [import_transactions_{entity_id}] it
+            INNER JOIN suppliers s
+            ON s.supplier_code = it.supplier_code
+            WHERE it.sys_id in {str(tuple(tran_ids)).replace(',)', ')')}"""
+            ret = pd.read_sql_query(sql, self.conn)
             self.update_transactions_status(tran_ids, "EXPORTING", entity_id)
             return ret
         except pandas.io.sql.DatabaseError:
@@ -264,4 +264,22 @@ class DatabaseService:
             else:
                 self.update_transactions_status(tran_ids, "EXPORTED", entity_id)
 
-
+    def get_export_transaction_fnb(self, entity_id, tran_ids) -> pd.DataFrame:
+        try:
+            sql = f"""SELECT s.to_branch_code,
+s.to_account_number,
+substr(s.to_account_type, 0,2) as 'to_account_type',
+CAST((it.amount * 100) as INT) as amount,
+REPLACE(it.description, 'Supplier Invoice  - ', '') AS 'to_statement_description',
+s.to_account_holder_name
+FROM [import_transactions_{entity_id}] it
+INNER JOIN suppliers s
+ON s.supplier_code = it.supplier_code
+WHERE it.sys_id in {str(tuple(tran_ids)).replace(',)', ')')}"""
+            print(sql)
+            ret = pd.read_sql_query(sql, self.conn)
+            self.update_transactions_status(tran_ids, "EXPORTING", entity_id)
+            return ret
+        except pandas.io.sql.DatabaseError:
+            print("get_export_transaction_fnb has failed")
+            return

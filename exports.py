@@ -75,3 +75,4 @@ class Ui_Exports(object):
         self.btn_search.setText(_translate("Exports", "Search"))
         self.btn_export_selected.setText(_translate("Exports", "Export Selected"))
         self.btn_export_all.setText(_translate("Exports", "Export All"))
+        self.table_transactions.setSortingEnabled(True)

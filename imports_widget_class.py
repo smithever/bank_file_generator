@@ -66,6 +66,7 @@ class ImportsUI(qtw.QWidget):
                 qtw.QMessageBox.about(self, "Error!", str(e))
             else:
                 self.update_import_tables(True)
+                self.file_selected()
         pass
 
     def delete_file(self):

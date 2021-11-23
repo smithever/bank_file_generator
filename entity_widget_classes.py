@@ -28,6 +28,7 @@ class EditEntity(qtw.QWidget):
         self.ui.combo_bank.setCurrentText(new_entities['bank_name'].iloc[0])
         self.ui.txt_account_number.setText(new_entities['account_number'].iloc[0])
         self.ui.txt_account_details.setText(new_entities['account_description'].iloc[0])
+        self.ui.txt_branch_code.setText(new_entities['branch_code'].iloc[0])
         self.ui.btn_save_entity.clicked.connect(partial(self.save_entity_clicked, entities, None, True, entity_id))
 
     def new(self, entities: pd.DataFrame, callback):
@@ -39,7 +40,8 @@ class EditEntity(qtw.QWidget):
         bank = self.ui.combo_bank.currentText()
         acc_number = self.ui.txt_account_number.text()
         acc_description = self.ui.txt_account_details.text()
-        if len(name) < 2 or len(acc_number) < 3 or len(acc_description) < 2:
+        branch_code = self.ui.txt_branch_code.text()
+        if len(name) < 2 or len(acc_number) < 3 or len(acc_description) < 2 or len(branch_code) < 1:
             return qtw.QMessageBox.about(self, "Info!", "Please complete all fields")
         if len(entities[entities['name'] == name]) > 0 and not is_edit:
             return qtw.QMessageBox.about(self, "Info!", "Entity with name already exists")
@@ -49,7 +51,8 @@ class EditEntity(qtw.QWidget):
                 "name": str(name),
                 "bank_name": str(bank),
                 "account_number": acc_number,
-                "account_description": str(acc_description)
+                "account_description": str(acc_description),
+                "branch_code": str(branch_code)
             }
             if not is_edit:
                 new = entities.append(new, ignore_index=True)
@@ -64,6 +67,7 @@ class EditEntity(qtw.QWidget):
                 entities.at[item_index, 'bank_name'] = str(bank)
                 entities.at[item_index, 'account_number'] = acc_number
                 entities.at[item_index, 'account_description'] = acc_description
+                entities.at[item_index, 'branch_code'] = branch_code
                 entities.reset_index()
                 db.save_entities(entities)
                 return qtw.QMessageBox.about(self, "Info!", "Entity updated successfully")
