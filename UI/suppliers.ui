@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
+    <width>738</width>
     <height>480</height>
    </rect>
   </property>
@@ -26,7 +26,7 @@
          <item>
           <widget class="QTableWidget" name="tbl_suppliers">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -39,13 +39,13 @@
            </property>
            <property name="maximumSize">
             <size>
-             <width>1200</width>
+             <width>16777215</width>
              <height>400</height>
             </size>
            </property>
            <property name="baseSize">
             <size>
-             <width>1000</width>
+             <width>-1</width>
              <height>0</height>
             </size>
            </property>

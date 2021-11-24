@@ -77,7 +77,7 @@ class ExportsUI(qtw.QWidget):
         dialog.setDefaultSuffix("csv")
         file_path, _ = dialog.getSaveFileName(self, "QFileDialog.getOpenFileName()",
                                               "",
-                                              "CSV (*.csv)", options=options)
+                                              "CSV (*.csv);; TXT (*.txt);; XLS (*.xls)", options=options)
         if file_path:
             if not str(file_path).endswith(".csv"):
                 file_path = file_path.__add__(".csv")
@@ -92,16 +92,13 @@ class ExportsUI(qtw.QWidget):
                     export_trans = db.get_export_transaction_fnb(self.entity_id, pde['sys_id'].tolist())
                 if entity.at[0, "bank_name"] == "Nedbank":
                     export_trans = db.get_export_transaction_nedbank(self.entity_id, pde['sys_id'].tolist())
+                if entity.at[0, "bank_name"] == "Standard Bank":
+                    export_trans = db.get_export_transaction_stdbank(self.entity_id, pde['sys_id'].tolist())
                 if len(export_trans) > 0:
                     root_file_name = str(os.path.join(ROOT_DIR, f"csv_exports/{file_name}"))
                     if len(export_trans.loc[export_trans['to_account_number'] == ""]) > 0:
                         qtw.QMessageBox.about(self, "Info!", f"Please ensure that 'to_account_number' for suppliers "
                                                              f"is not empty'")
-                        db.update_transactions_status(pde['sys_id'].tolist(), "NEW", self.entity_id)
-                        return
-                    if len(export_trans.loc[export_trans['to_branch_code'] == ""]) > 0:
-                        qtw.QMessageBox.about(self, "Info!", f"Please ensure that 'to_branch_code' for suppliers is "
-                                                             f"not empty'")
                         db.update_transactions_status(pde['sys_id'].tolist(), "NEW", self.entity_id)
                         return
                     try:
@@ -111,6 +108,9 @@ class ExportsUI(qtw.QWidget):
                             export_trans.to_csv(file_path, index=False)
                         if entity.at[0, "bank_name"] == "FNB":
                             generate_bankserv_fwf(self.entity_id, export_trans, file_path)
+                        if entity.at[0, "bank_name"] == "Standard Bank":
+                            file_path = file_path.replace(".csv", ".xls")
+                            export_trans.to_excel(file_path, "Sheet1", index=False)
                     except RuntimeError as ex:
                         if os.path.exists(file_path):
                             os.remove(file_path)
@@ -126,6 +126,7 @@ class ExportsUI(qtw.QWidget):
 
 
 def generate_bankserv_fwf(entity_id, export_trans: pd.DataFrame, file_path):
+    file_path = file_path.replace(".csv", ".txt")
     file = open(file_path, "w+")
     entity = db.get_single_entity(entity_id)
     # INSTALLATION HEADER RECORD
@@ -137,7 +138,7 @@ def generate_bankserv_fwf(entity_id, export_trans: pd.DataFrame, file_path):
     file.write(f"{uhr}\r\n")
 
     # CONTRA RECORD
-    from_branch_code = entity.at[0, "branch_code"]  # TODO: need to add this to entity FUCK!!
+    from_branch_code = entity.at[0, "branch_code"]
     from_account_no = entity.at[0, "account_number"]
     action_date = datetime.datetime.now().strftime('%y%m%d')  #YYMMDD
     cr = f"12{from_branch_code[0:6]: >6}{from_account_no[0:11]: >11}{filler(39)}{action_date[0:6]: >6}{filler(116)}"
@@ -155,7 +156,7 @@ def generate_bankserv_fwf(entity_id, export_trans: pd.DataFrame, file_path):
         non_standard_account_number = filler(20)  # To be used if the recipient account number is more than 11 chars
         if len(to_account_number) > 11:
             non_standard_account_number = to_account_number
-        std_tran = f"10{from_branch_code[:6]: >6}{from_account_no[:11]: >11}{filler(4)}{user_sequence_number[:6]: >6}{to_branch_code[:6]: >6}{to_account_number[:11]: >11}{to_type_of_account[:1]: >1}{amount[:11]: >11}{filler(12)}{to_statement_description[:20]: >20}{filler(10)}{to_account_holder_name[:15]: >15}{filler(15)}{non_standard_account_number[:20]: >20}{filler(30)}"
+        std_tran = f"10{from_branch_code[:6]: >6}{from_account_no[:11]: >11}{filler(4)}{user_sequence_number[:6]: >6}{to_branch_code[:6]: >6}{to_account_number[:11]: >11}{to_type_of_account[:1]: >1}{amount[:11]: >11}{filler(12)}{to_statement_description[:20]: <20}{filler(10)}{to_account_holder_name[:15]: <15}{filler(15)}{non_standard_account_number[:20]: >20}{filler(30)}"
         file.write(f"{std_tran}\r\n")
 
     # USER TRAILER RECORD

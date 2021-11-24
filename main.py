@@ -100,3 +100,4 @@ if __name__ == '__main__':
 
 # TODO: https://businessbanking.nedsecure.co.za/TrainingPages/steps/Import%20batch%20paym%20CSV%20format/Import%20batch%20paym%20CSV%20format.htm#
 # TODO: https://www.mailers.fnbweb.co.za/Campaigns/Mailers/ClientManagement/2015/Oct2015_Client%20Mailer/Payment%20CSV%20Imports%20Help%20Guide%20-%20South%20Africa_Oct%202015.pdf
+# TODO: http://secure.businessonline.standardbank.co.za/bebhelp/Funds_Transfer/excel_help_import_file.html

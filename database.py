@@ -111,6 +111,15 @@ class DatabaseService:
         else:
             save = df[self.import_transaction_headings]
             save.to_sql(f"import_transactions_{entity_id}", self.conn, if_exists='append')
+            self.conn.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS ix_sys_id ON [import_transactions_{entity_id}](sys_id)")
+            self.conn.execute(
+                f"CREATE INDEX IF NOT EXISTS ix_id_source ON [import_transactions_{entity_id}](id_source)")
+            self.conn.execute(
+                f"CREATE INDEX IF NOT EXISTS ix_sys_import_file_name ON [import_transactions_{entity_id}](sys_import_file_name)")
+            self.conn.execute(
+                f"CREATE INDEX IF NOT EXISTS ix_sys_export_file_name ON [import_transactions_{entity_id}](sys_export_file_name)")
+            self.conn.execute(
+                f"CREATE INDEX IF NOT EXISTS ix_supplier_code ON [import_transactions_{entity_id}](supplier_code)")
             self.conn.commit()
 
     def delete_file_import_transactions(self, filename: str, entity_id):
@@ -155,12 +164,13 @@ class DatabaseService:
         except pandas.io.sql.DatabaseError:
             return ret
 
-    def save_suppliers_summary(self, df: pd.DataFrame, entity_id):
+    def save_suppliers_summary(self, df: pd.DataFrame):
         if not pd:
             return None
         else:
             save = df[self.supplier_summary_headings]
             save.to_sql(f"suppliers", self.conn, if_exists='replace')
+            self.conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_supplier_code ON suppliers(supplier_code)")
             self.conn.commit()
 
     def get_suppliers_summary(self, entity_id) -> pd.DataFrame:
@@ -199,7 +209,9 @@ class DatabaseService:
                     new["to_branch_code"] = ""
                     new["to_account_holder_name"] = ""
                     new["to_account_type"] = "1.Current Account"
-                return new[self.supplier_summary_headings]
+                ret = new[self.supplier_summary_headings]
+                self.save_suppliers_summary(ret)
+                return ret
             except pandas.io.sql.DatabaseError:
                 return ret
 
@@ -276,10 +288,31 @@ FROM [import_transactions_{entity_id}] it
 INNER JOIN suppliers s
 ON s.supplier_code = it.supplier_code
 WHERE it.sys_id in {str(tuple(tran_ids)).replace(',)', ')')}"""
-            print(sql)
             ret = pd.read_sql_query(sql, self.conn)
             self.update_transactions_status(tran_ids, "EXPORTING", entity_id)
             return ret
         except pandas.io.sql.DatabaseError:
             print("get_export_transaction_fnb has failed")
+            return
+
+    def get_export_transaction_stdbank(self, entity_id, tran_ids) -> pd.DataFrame:
+        try:
+            sql = f"""SELECT s.to_account_number,
+s.to_account_holder_name,
+REPLACE(it.description, 'Supplier Invoice  - ', '') AS 'to_statement_description',
+strftime('%Y%m%d', 'now'),
+REPLACE(it.amount, '.', ',') as Amount,
+'1' AS 'Hash Total Indicator',
+(CAST((SELECT account_number FROM entities WHERE sys_id = '{entity_id}') AS INT) * CAST(it.amount AS INT)) AS 'Hash Total',
+'E' AS 'Pay Alert Type',
+'ycloete@telkomsa.net' AS  'Pay Alert Destination'
+FROM [import_transactions_{entity_id}] it
+INNER JOIN suppliers s
+ON s.supplier_code = it.supplier_code
+WHERE it.sys_id in {str(tuple(tran_ids)).replace(',)', ')')}"""
+            ret = pd.read_sql_query(sql, self.conn)
+            self.update_transactions_status(tran_ids, "EXPORTING", entity_id)
+            return ret
+        except pandas.io.sql.DatabaseError:
+            print("get_export_transaction_stdbank has failed")
             return

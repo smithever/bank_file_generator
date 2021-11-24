@@ -46,7 +46,6 @@ class SuppliersUI(qtw.QWidget):
         self.current_supplier_transactions = pd.DataFrame(
             columns=db.import_transaction_headings
         ).set_index("sys_id")
-        self.ui.tbl_suppliers.clicked.connect(self.supplier_selected)
         self.ui.btn_tran_search.clicked.connect(self.search_transactions)
         status_menu = qtw.QMenu()
         status_menu.triggered.connect(lambda x: self.update_selected_tran_status(x.text()))
@@ -54,6 +53,7 @@ class SuppliersUI(qtw.QWidget):
         self.add_menu(db.statuses, status_menu)
 
     def update_suppliers_table(self):
+        self.ui.tbl_suppliers.disconnect()
         self.suppliers = db.get_suppliers_summary(self.entity_id)
         if len(self.suppliers) > 0:
             combo_box_options = ["0.Public Recipient", "1.Current Account", "2.Savings Account", "3.Transmission Account", "4.Bond Account", "5.Subscription Share Account"]
@@ -61,12 +61,14 @@ class SuppliersUI(qtw.QWidget):
             i = self.ui.tbl_suppliers.rowCount()
             while i > 0:
                 combo = qtw.QComboBox()
-                combo.currentTextChanged.connect(partial(self.update_to_account, i - 1))
+                combo.currentTextChanged.connect(partial(self.update_to_account, i-1))
                 for t in combo_box_options:
                     combo.addItem(t)
                 combo.setCurrentText(self.suppliers.at[i - 1, "to_account_type"])
                 self.ui.tbl_suppliers.setCellWidget(i - 1, 6, combo)
                 i = i-1
+        self.ui.tbl_suppliers.cellChanged[int, int].connect(self.update_suppliers)
+        self.ui.tbl_suppliers.clicked.connect(self.supplier_selected)
 
     def update_to_account(self, row):
         widget = self.ui.tbl_suppliers.cellWidget(row, 6)
@@ -75,12 +77,12 @@ class SuppliersUI(qtw.QWidget):
             print(text)
             index = self.suppliers.columns.get_loc("to_account_type")
             self.suppliers.iloc[row, index] = text
-            db.save_suppliers_summary(self.suppliers, self.entity_id)
+            db.save_suppliers_summary(self.suppliers)
 
     def update_suppliers(self, row, column):
         text = self.ui.tbl_suppliers.item(row, column).text()
         self.suppliers.iloc[row, column] = text
-        db.save_suppliers_summary(self.suppliers, self.entity_id)
+        db.save_suppliers_summary(self.suppliers)
 
     def supplier_selected(self):
         sel_index = self.ui.tbl_suppliers.selectedItems()[0].row()

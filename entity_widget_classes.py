@@ -11,7 +11,8 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 db = DatabaseService()
 banks = [
     "FNB",
-    "Nedbank"
+    "Nedbank",
+    "Standard Bank"
 ]
 
 class EditEntity(qtw.QWidget):
