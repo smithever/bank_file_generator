@@ -11,8 +11,6 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 db = DatabaseService()
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-
 
 class ExportsUI(qtw.QWidget):
     def __init__(self, parent):
@@ -32,9 +30,9 @@ class ExportsUI(qtw.QWidget):
         sel_index = self.ui.table_export_files.selectedItems()[0].row()
         if sel_index >= 0:
             selected_file = self.export_files.at[sel_index, "File Name"]
-            # file_path = str(os.path.join(ROOT_DIR, f"csv_exports/{selected_file}"))
-            file_data = pd.read_csv(f"csv_exports/{selected_file}")
+            file_data = pd.read_csv(f"exports/{selected_file}")
             common.pandas_to_table_widget(file_data, self.ui.table_file_transactions)
+
 
     def update_tables(self):
         self.export_files = db.get_exported_file_summary(self.entity_id)
