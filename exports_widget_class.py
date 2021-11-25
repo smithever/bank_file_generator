@@ -32,8 +32,8 @@ class ExportsUI(qtw.QWidget):
         sel_index = self.ui.table_export_files.selectedItems()[0].row()
         if sel_index >= 0:
             selected_file = self.export_files.at[sel_index, "File Name"]
-            file_path = str(os.path.join(ROOT_DIR, f"csv_exports/{selected_file}"))
-            file_data = pd.read_csv(file_path)
+            # file_path = str(os.path.join(ROOT_DIR, f"csv_exports/{selected_file}"))
+            file_data = pd.read_csv(f"csv_exports/{selected_file}")
             common.pandas_to_table_widget(file_data, self.ui.table_file_transactions)
 
     def update_tables(self):
@@ -95,15 +95,17 @@ class ExportsUI(qtw.QWidget):
                 if entity.at[0, "bank_name"] == "Standard Bank":
                     export_trans = db.get_export_transaction_stdbank(self.entity_id, pde['sys_id'].tolist())
                 if len(export_trans) > 0:
-                    root_file_name = str(os.path.join(ROOT_DIR, f"csv_exports/{file_name}"))
                     if len(export_trans.loc[export_trans['to_account_number'] == ""]) > 0:
                         qtw.QMessageBox.about(self, "Info!", f"Please ensure that 'to_account_number' for suppliers "
                                                              f"is not empty'")
                         db.update_transactions_status(pde['sys_id'].tolist(), "NEW", self.entity_id)
                         return
                     try:
-                        db.update_transactions_exported(self.entity_id, pde['sys_id'].tolist(), file_name)
+                        if not os.path.exists("exports"):
+                            os.makedirs("exports")
+                        root_file_name = str(f"exports/{file_name}")
                         export_trans.to_csv(root_file_name, index=False)
+                        db.update_transactions_exported(self.entity_id, pde['sys_id'].tolist(), file_name)
                         if entity.at[0, "bank_name"] == "Nedbank":
                             export_trans.to_csv(file_path, index=False)
                         if entity.at[0, "bank_name"] == "FNB":
